@@ -1,0 +1,15 @@
+<svg width="260" height="30" viewBox="0 0 260 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .brand-text {
+      font-family: 'DM Sans', 'Inter', 'Helvetica Neue', sans-serif;
+      font-weight: 300;
+      letter-spacing: 0.15em;
+      font-size: 16px;
+      fill: currentColor;
+    }
+    .bold-brand {
+      font-weight: 600;
+    }
+  </style>
+  <text x="0" y="20" class="brand-text"><tspan class="bold-brand">AHIA</tspan> JEWELRY INC.</text>
+</svg>

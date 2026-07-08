@@ -1,0 +1,19 @@
+<svg width="400" height="110" viewBox="0 0 400 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g fill="currentColor">
+    <!-- Letter A -->
+    <path d="M65 10 L15 100 H27 L65 28 L103 100 H115 L65 10 Z" />
+    <path d="M38 78 H92 V86 H38 V78 Z" />
+    
+    <!-- Letter H -->
+    <path d="M140 10 H152 V100 H140 V10 Z" />
+    <path d="M210 10 H222 V100 H210 V10 Z" />
+    <path d="M152 51 H210 V59 H152 V51 Z" />
+    
+    <!-- Letter I -->
+    <path d="M250 10 H262 V100 H250 V10 Z" />
+    
+    <!-- Letter A -->
+    <path d="M335 10 L285 100 H297 L335 28 L373 100 H385 L335 10 Z" />
+    <path d="M308 78 H362 V86 H308 V78 Z" />
+  </g>
+</svg>
