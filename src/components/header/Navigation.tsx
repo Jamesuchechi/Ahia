@@ -1,4 +1,4 @@
-import { ArrowRight, X, Minus, Plus } from "lucide-react";
+import { ArrowRight, X, Minus, Plus, User, LogOut, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,16 @@ import ShoppingBag from "./ShoppingBag";
 import pantheonImage from "@/assets/pantheon.jpg";
 import eclipseImage from "@/assets/eclipse.jpg";
 import haloImage from "@/assets/halo.jpg";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CartItem {
   id: number;
@@ -18,6 +28,7 @@ interface CartItem {
 }
 
 const Navigation = () => {
+  const { user, profile, isAdmin, signOut } = useAuth();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [offCanvasType, setOffCanvasType] = useState<'favorites' | null>(null);
@@ -207,6 +218,51 @@ const Navigation = () => {
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
           </button>
+          
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="p-2 text-nav-foreground hover:text-nav-hover transition-colors duration-200"
+                  aria-label="Account"
+                >
+                  <User className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 font-light bg-white border border-border shadow-sm">
+                <DropdownMenuLabel className="font-normal text-xs text-muted-foreground uppercase tracking-wider">
+                  Account Details
+                </DropdownMenuLabel>
+                <div className="px-2 py-1.5 text-sm text-foreground truncate font-normal">
+                  {profile ? `${profile.first_name} ${profile.last_name}` : user.email}
+                </div>
+                <DropdownMenuSeparator />
+                {isAdmin && (
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link to="/admin" className="flex items-center gap-2 w-full">
+                      <Shield className="w-4 h-4 text-primary" />
+                      <span>Admin Panel</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => { signOut(); toast.success("Signed out successfully"); }} className="cursor-pointer text-destructive focus:text-destructive">
+                  <div className="flex items-center gap-2">
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link 
+              to="/auth" 
+              className="p-2 text-nav-foreground hover:text-nav-hover transition-colors duration-200"
+              aria-label="Sign In"
+            >
+              <User className="w-5 h-5" />
+            </Link>
+          )}
+
           <button 
             className="hidden lg:block p-2 text-nav-foreground hover:text-nav-hover transition-colors duration-200"
             aria-label="Favorites"
