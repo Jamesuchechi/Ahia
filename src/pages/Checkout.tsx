@@ -1,5 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Minus, Plus, CreditCard, Check } from "lucide-react";
+import { getPaystackPublicKey, isPaystackConfigured } from "@/lib/paystack";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/lib/supabase";
 import CheckoutHeader from "../components/header/CheckoutHeader";
 import Footer from "../components/footer/Footer";
 import { Button } from "@/components/ui/button";
@@ -7,8 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import pantheonImage from "@/assets/pantheon.jpg";
-import eclipseImage from "@/assets/eclipse.jpg";
+import { useCart } from "@/hooks/useCart";
+import { formatPrice } from "@/lib/catalog";
+import { getShippingCost, validateDiscountCode } from "@/lib/checkout";
 
 const Checkout = () => {
   const [showDiscountInput, setShowDiscountInput] = useState(false);
@@ -45,61 +50,60 @@ const Checkout = () => {
   });
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentComplete, setPaymentComplete] = useState(false);
-  
-  // Mock cart data - in a real app this would come from state management
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 1,
-      name: "Pantheon Ring",
-      price: "€2,450",
-      quantity: 1,
-      image: pantheonImage,
-      size: "54 EU / 7 US"
-    },
-    {
-      id: 2,
-      name: "Eclipse Earrings", 
-      price: "€1,850",
-      quantity: 1,
-      image: eclipseImage
-    }
-  ]);
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [orderStatus, setOrderStatus] = useState("pending");
+  const [appliedDiscount, setAppliedDiscount] = useState<string | null>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+  const { items: cartItems, updateQuantity, subtotal: cartSubtotal, clearCart } = useCart();
+  const { user } = useAuth();
 
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      setCartItems(items => items.filter(item => item.id !== id));
-    } else {
-      setCartItems(items => 
-        items.map(item => 
-          item.id === id ? { ...item, quantity: newQuantity } : item
-        )
-      );
-    }
+  const subtotal = useMemo(() => cartSubtotal, [cartSubtotal]);
+  const shipping = useMemo(() => getShippingCost(shippingOption, subtotal, cartItems.length), [shippingOption, subtotal, cartItems.length]);
+  const total = Math.max(0, subtotal + shipping - discountAmount);
+
+  useEffect(() => {
+    if (!paymentComplete || !pendingOrderId) return;
+
+    const loadOrderStatus = async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("status")
+        .eq("id", pendingOrderId)
+        .single();
+
+      if (!error && data) {
+        setOrderStatus(data.status);
+      }
+    };
+
+    void loadOrderStatus();
+  }, [paymentComplete, pendingOrderId]);
+
+  const recordOrderStatusHistory = async (orderId: string, status: string, notes: string) => {
+    const { error } = await supabase.from("order_status_history").insert({
+      order_id: orderId,
+      status,
+      notes,
+    });
+
+    if (error) throw error;
   };
 
-  const subtotal = cartItems.reduce((sum, item) => {
-    const price = parseFloat(item.price.replace('€', '').replace(',', ''));
-    return sum + (price * item.quantity);
-  }, 0);
-
-  const getShippingCost = () => {
-    switch (shippingOption) {
-      case "express":
-        return 15;
-      case "overnight":
-        return 35;
-      default:
-        return 0; // Standard shipping is free
-    }
-  };
-  
-  const shipping = getShippingCost();
-  const total = subtotal + shipping;
-
-  const handleDiscountSubmit = () => {
-    // Handle discount code submission
-    console.log("Discount code submitted:", discountCode);
+  const handleDiscountSubmit = async () => {
+    setIsApplyingDiscount(true);
+    const nextDiscount = await validateDiscountCode(subtotal, discountCode);
+    setDiscountAmount(nextDiscount.discountAmount);
+    setAppliedDiscount(nextDiscount.appliedCode);
     setShowDiscountInput(false);
+
+    if (nextDiscount.appliedCode) {
+      toast.success(`Discount ${nextDiscount.appliedCode} applied.`);
+    } else {
+      toast.error("That discount code is not available.");
+    }
+
+    setIsApplyingDiscount(false);
   };
 
   const handleCustomerDetailsChange = (field: string, value: string) => {
@@ -119,13 +123,125 @@ const Checkout = () => {
   };
 
   const handleCompleteOrder = async () => {
+    if (cartItems.length === 0) {
+      toast.error("Your bag is empty.");
+      return;
+    }
+
     setIsProcessing(true);
-    
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsProcessing(false);
-    setPaymentComplete(true);
+
+    try {
+      const shippingAddressText = [shippingAddress.address, shippingAddress.city, shippingAddress.postalCode, shippingAddress.country]
+        .filter(Boolean)
+        .join(", ");
+      const billingAddressText = hasSeparateBilling
+        ? [billingDetails.address, billingDetails.city, billingDetails.postalCode, billingDetails.country]
+            .filter(Boolean)
+            .join(", ")
+        : shippingAddressText;
+
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert({
+          user_id: user?.id ?? null,
+          email: customerDetails.email,
+          first_name: customerDetails.firstName,
+          last_name: customerDetails.lastName,
+          phone: customerDetails.phone || null,
+          shipping_address: shippingAddress.address,
+          shipping_city: shippingAddress.city,
+          shipping_postal_code: shippingAddress.postalCode,
+          shipping_country: shippingAddress.country,
+          billing_address: billingAddressText,
+          billing_city: billingDetails.city || shippingAddress.city,
+          billing_postal_code: billingDetails.postalCode || shippingAddress.postalCode,
+          billing_country: billingDetails.country || shippingAddress.country,
+          shipping_option: shippingOption,
+          shipping_cost: shipping,
+          subtotal,
+          discount_amount: discountAmount,
+          total,
+          status: "pending",
+        })
+        .select("id")
+        .single();
+
+      if (orderError) throw orderError;
+
+      await recordOrderStatusHistory(orderData.id, "pending", "Order created and awaiting payment.");
+
+      const { error: itemsError } = await supabase.from("order_items").insert(
+        cartItems.map((item) => ({
+          order_id: orderData.id,
+          variant_id: item.variant_id ?? null,
+          sku: item.slug || null,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        }))
+      );
+
+      if (itemsError) throw itemsError;
+
+      setPendingOrderId(orderData.id);
+
+      if (isPaystackConfigured()) {
+        interface PaystackInstance {
+          openIframe: () => void;
+        }
+        interface PaystackConstructor {
+          new (config: {
+            key: string;
+            email: string;
+            amount: number;
+            currency: string;
+            ref: string;
+            metadata: { order_id: string };
+            callback: () => Promise<void>;
+            onClose: () => void;
+          }): PaystackInstance;
+        }
+        const handler = (window as Window & { PaystackPop?: PaystackConstructor }).PaystackPop;
+        if (handler) {
+          const paystack = new handler({
+            key: getPaystackPublicKey(),
+            email: customerDetails.email,
+            amount: Math.round(total * 100),
+            currency: "GHS",
+            ref: `ahia-${orderData.id}-${Date.now()}`,
+            metadata: {
+              order_id: orderData.id,
+            },
+            callback: async () => {
+              await supabase.from("orders").update({ status: "paid" }).eq("id", orderData.id);
+              await recordOrderStatusHistory(orderData.id, "paid", "Payment completed via Paystack.");
+              setOrderStatus("paid");
+              setPaymentComplete(true);
+              await clearCart();
+              toast.success("Payment successful. Your order is confirmed.");
+            },
+            onClose: () => {
+              toast.message("Payment was not completed. Your order remains pending.");
+            },
+          });
+          paystack.openIframe();
+          return;
+        }
+      }
+
+      await recordOrderStatusHistory(orderData.id, "pending", "Paystack unavailable; order saved as pending.");
+      toast.warning("Paystack is not available right now, so the order was saved as pending.");
+      setPendingOrderId(orderData.id);
+      setOrderStatus("pending");
+      setPaymentComplete(true);
+      await clearCart();
+      toast.success("Order placed successfully.");
+    } catch (error) {
+      console.error("Failed to submit checkout order", error);
+      toast.error("We couldn't place your order right now. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -154,7 +270,9 @@ const Checkout = () => {
                       <div className="flex-1">
                         <h3 className="font-light text-foreground">{item.name}</h3>
                         {item.size && (
-                          <p className="text-sm text-muted-foreground">Size: {item.size}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {item.size.includes(":") ? item.size : `Size: ${item.size}`}
+                          </p>
                         )}
                         
                         {/* Quantity controls */}
@@ -208,19 +326,30 @@ const Checkout = () => {
                         />
                         <button 
                           onClick={handleDiscountSubmit}
-                          className="text-sm text-foreground underline hover:no-underline transition-all px-2"
+                          disabled={isApplyingDiscount}
+                          className="text-sm text-foreground underline hover:no-underline transition-all px-2 disabled:opacity-50"
                         >
-                          Apply
+                          {isApplyingDiscount ? "Applying..." : "Apply"}
                         </button>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="border-t border-muted-foreground/20 mt-4 pt-6">
+                <div className="border-t border-muted-foreground/20 mt-4 pt-6 space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span className="text-foreground">€{subtotal.toLocaleString()}</span>
+                  </div>
+                  {appliedDiscount && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Discount</span>
+                      <span className="text-foreground">-€{discountAmount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-medium">
+                    <span className="text-foreground">Total</span>
+                    <span className="text-foreground">€{(subtotal + shipping - discountAmount).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -638,9 +767,15 @@ const Checkout = () => {
                         {shipping === 0 ? "Free" : `€${shipping}`}
                       </span>
                     </div>
+                    {appliedDiscount && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Discount</span>
+                        <span className="text-foreground">-€{discountAmount.toLocaleString()}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-medium border-t border-muted-foreground/20 pt-3">
                       <span className="text-foreground">Total</span>
-                      <span className="text-foreground">€{total.toLocaleString()}</span>
+                      <span className="text-foreground">€{Math.max(0, total).toLocaleString()}</span>
                     </div>
                   </div>
 
@@ -659,6 +794,18 @@ const Checkout = () => {
                   </div>
                   <h3 className="text-xl font-light text-foreground mb-2">Order Complete!</h3>
                   <p className="text-muted-foreground">Thank you for your purchase. Your order confirmation has been sent to your email.</p>
+                  {pendingOrderId && (
+                    <div className="mt-4 rounded-none border border-border bg-background/70 p-4 text-left text-sm text-muted-foreground">
+                      <div className="flex items-center justify-between gap-3">
+                        <span>Order reference</span>
+                        <span className="font-medium text-foreground">{pendingOrderId.slice(0, 8).toUpperCase()}</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-3">
+                        <span>Status</span>
+                        <span className="font-medium capitalize text-foreground">{orderStatus}</span>
+                      </div>
+                    </div>
+                  )}
                  </div>
                )}
              </div>

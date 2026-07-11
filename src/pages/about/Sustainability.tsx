@@ -17,7 +17,7 @@ const Sustainability = () => {
         <main className="w-full lg:w-[70vw] lg:ml-auto px-6">
         <PageHeader 
           title="Sustainability" 
-          subtitle="Creating beautiful jewelry while protecting our planet for future generations"
+          subtitle="Creating beautiful designs while protecting our planet for future generations"
         />
         
         <ContentSection title="Our Environmental Commitment">
@@ -25,13 +25,13 @@ const Sustainability = () => {
             <div className="space-y-6">
               <h3 className="text-xl font-light text-foreground">Ethical Sourcing</h3>
               <p className="text-muted-foreground leading-relaxed">
-                We partner only with suppliers who share our commitment to ethical practices. Every gemstone and precious metal in our collection is sourced responsibly, with full transparency in our supply chain.
+                We partner only with suppliers who share our commitment to ethical practices. Every material in our collection is sourced responsibly, with full transparency in our supply chain.
               </p>
             </div>
             <div className="space-y-6">
               <h3 className="text-xl font-light text-foreground">Recycled Materials</h3>
               <p className="text-muted-foreground leading-relaxed">
-                Over 80% of our precious metals come from recycled sources, reducing the environmental impact of mining while maintaining the highest quality standards for our jewelry.
+                Over 80% of our metals and materials come from recycled sources, reducing the environmental impact of mining while maintaining the highest quality standards for our products.
               </p>
             </div>
           </div>
@@ -58,7 +58,7 @@ const Sustainability = () => {
         <ContentSection title="Circular Economy">
           <div className="space-y-8">
             <p className="text-lg text-muted-foreground leading-relaxed">
-              We believe in the power of circular design - creating jewelry that can be treasured, repaired, and eventually recycled into new pieces.
+              We believe in the power of circular design - creating products that can be treasured, repaired, and eventually recycled into new pieces.
             </p>
             
             <div className="grid md:grid-cols-2 gap-8">
@@ -71,7 +71,7 @@ const Sustainability = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-light text-foreground">Take-Back Program</h3>
                 <p className="text-muted-foreground">
-                  When you're ready for something new, we'll take back your Ahia jewelry to be recycled into future pieces.
+                  When you're ready for something new, we'll take back your Ahia items to be recycled into future pieces.
                 </p>
               </div>
             </div>

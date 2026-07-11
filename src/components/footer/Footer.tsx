@@ -6,12 +6,12 @@ const Footer = () => {
           {/* Brand - Left side */}
           <div>
             <img 
-              src="/ahia_jewelry_inc-2.svg" 
-              alt="Ahia Jewelry Inc." 
+              src="/ahia-1.svg" 
+              alt="Ahia" 
               className="mb-4 h-6 w-auto"
             />
             <p className="text-sm font-light text-black/70 leading-relaxed max-w-md mb-6">
-              Minimalist jewelry crafted for the modern individual
+              Minimalist design and essentials crafted for the modern individual
             </p>
             
             {/* Contact Information */}
@@ -24,7 +24,7 @@ const Footer = () => {
               <div>
                 <p className="font-normal text-black mb-1 mt-3">Contact</p>
                 <p>+1 (212) 555-0123</p>
-                <p>hello@Ahiajewelry.com</p>
+                <p>hello@ahia-shop.com</p>
               </div>
             </div>
           </div>
@@ -35,11 +35,10 @@ const Footer = () => {
             <div>
               <h4 className="text-sm font-normal mb-4">Shop</h4>
               <ul className="space-y-2">
-                <li><a href="#" className="text-sm font-light text-black/70 hover:text-black transition-colors">New In</a></li>
-                <li><a href="#" className="text-sm font-light text-black/70 hover:text-black transition-colors">Rings</a></li>
-                <li><a href="#" className="text-sm font-light text-black/70 hover:text-black transition-colors">Earrings</a></li>
-                <li><a href="#" className="text-sm font-light text-black/70 hover:text-black transition-colors">Bracelets</a></li>
-                <li><a href="#" className="text-sm font-light text-black/70 hover:text-black transition-colors">Necklaces</a></li>
+                <li><a href="/category/shop" className="text-sm font-light text-black/70 hover:text-black transition-colors">Shop All</a></li>
+                <li><a href="/category/shop?sort=newest" className="text-sm font-light text-black/70 hover:text-black transition-colors">New In</a></li>
+                <li><a href="/category/shop" className="text-sm font-light text-black/70 hover:text-black transition-colors">Best Sellers</a></li>
+                <li><a href="/category/shop" className="text-sm font-light text-black/70 hover:text-black transition-colors">Collections</a></li>
               </ul>
             </div>
 

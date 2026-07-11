@@ -6,7 +6,7 @@ const LargeHero = () => {
       <div className="w-full aspect-[16/9] mb-3 overflow-hidden">
         <img 
           src={heroImage} 
-          alt="Modern jewelry collection" 
+          alt="Modern design collection" 
           className="w-full h-full object-cover"
         />
       </div>
@@ -15,7 +15,7 @@ const LargeHero = () => {
           Modern Heritage
         </h2>
         <p className="text-sm font-light text-foreground">
-          Contemporary jewelry crafted with timeless elegance
+          Contemporary design crafted with timeless elegance
         </p>
       </div>
     </section>

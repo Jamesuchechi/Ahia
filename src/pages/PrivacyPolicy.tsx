@@ -4,7 +4,7 @@ import Footer from "../components/footer/Footer";
 
 const PrivacyPolicy = () => {
   useEffect(() => {
-    document.title = "Privacy Policy - Ahia Jewelry";
+    document.title = "Privacy Policy - Ahia";
   }, []);
 
   return (
@@ -22,7 +22,7 @@ const PrivacyPolicy = () => {
             <section>
               <h2 className="text-2xl font-light text-foreground mb-4">Introduction</h2>
               <p className="text-muted-foreground leading-relaxed">
-                At Ahia Jewelry Inc. ("we," "our," or "us"), we respect your privacy and are committed to protecting your personal data. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website, make a purchase, or interact with our services.
+                At Ahia Inc. ("we," "our," or "us"), we respect your privacy and are committed to protecting your personal data. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website, make a purchase, or interact with our services.
               </p>
             </section>
 
@@ -121,7 +121,7 @@ const PrivacyPolicy = () => {
                 If you have any questions about this Privacy Policy or our privacy practices, please contact us at:
               </p>
               <div className="mt-4 text-muted-foreground">
-                <p>Email: privacy@Ahiajewelry.com</p>
+                <p>Email: privacy@ahia-shop.com</p>
                 <p>Phone: +1 (212) 555-0123</p>
                 <p>Address: 123 Madison Avenue, New York, NY 10016</p>
               </div>

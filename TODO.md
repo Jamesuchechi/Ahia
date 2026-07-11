@@ -51,79 +51,87 @@ Goal: know who's a customer and who's an admin. Currently there is no auth at al
 ## Phase 3 — Admin Dashboard: Core CRUD
 Goal: products get added and managed through the admin, not hardcoded in components.
 
-- [ ] Admin shell/layout with nav (`/admin`, `/admin/products`, `/admin/categories`, `/admin/orders`)
-- [ ] Category CRUD (create, edit, reorder, nest, delete with guard if products exist)
-- [ ] Attribute CRUD (create attribute types and their possible values)
-- [ ] Product CRUD (create/edit/archive, assign category, write description/price)
-- [ ] Variant management UI (attach attribute combinations, set stock/SKU/price override per variant)
-- [ ] Image upload UI (Supabase Storage or Cloudflare R2), reorder, set alt text
-- [ ] Bulk CSV import for products (big time-saver once catalog grows)
-- [ ] Inventory view with low-stock indicator
-- [ ] Order list + detail view, status update action
-- [ ] Basic dashboard stats (revenue, order count, top products)
+- [x] Admin shell/layout with nav (`/admin`, `/admin/products`, `/admin/categories`, `/admin/orders`)
+- [x] Category CRUD (create, edit, reorder, nest, delete with guard if products exist)
+- [x] Attribute CRUD (create attribute types and their possible values)
+- [x] Product CRUD (create/edit/archive, assign category, write description/price)
+- [x] Variant management UI (attach attribute combinations, set stock/SKU/price override per variant)
+- [x] Image upload UI (Supabase Storage or Cloudflare R2), reorder, set alt text
+- [x] Bulk CSV import for products (big time-saver once catalog grows)
+- [x] Inventory view with low-stock indicator
+- [x] Order list + detail view, status update action
+- [x] Basic dashboard stats (revenue, order count, top products)
 
 ## Phase 4 — Storefront: Replace Mock Data
 Goal: kill every hardcoded array; the frontend should reflect real DB state.
 
-- [ ] `Index.tsx` — pull featured categories/products from DB instead of hardcoded sections
-- [ ] `Category.tsx` / `ProductGrid.tsx` — fetch products by category from DB
-- [ ] `ProductDetail.tsx` — **fix the bug where `productId` is ignored**; fetch the actual product and its variants/images
-- [ ] `FilterSortBar.tsx` — wire checkboxes to real query params/filter state
-- [ ] Sorting dropdown — actually re-query/re-order results
-- [ ] `Pagination.tsx` — wire to real result counts, not a static mockup
-- [ ] Search bar in `Navigation.tsx` — wire to a real query (start with Postgres full-text search)
-- [ ] `ProductCarousel.tsx` — pull from DB (e.g. "featured" flag or "new" flag)
+- [x] `Index.tsx` — pull featured categories/products from DB instead of hardcoded sections
+- [x] `Category.tsx` / `ProductGrid.tsx` — fetch products by category from DB
+- [x] `ProductDetail.tsx` — **fix the bug where `productId` is ignored**; fetch the actual product and its variants/images
+- [x] `FilterSortBar.tsx` — wire checkboxes to real query params/filter state
+- [x] Sorting dropdown — actually re-query/re-order results
+- [x] `Pagination.tsx` — wire to real result counts, not a static mockup
+- [x] Search bar in `Navigation.tsx` — wire to a real query (start with Postgres full-text search)
+- [x] `ProductCarousel.tsx` — pull from DB (e.g. "featured" flag or "new" flag)
 
 ## Phase 5 — Cart & Checkout (Real)
 Goal: replace the fake in-memory cart and the `setTimeout` fake checkout.
 
-- [ ] Cart persisted per session (guest) and per user (logged in) — DB-backed via `carts`/`cart_items`
-- [ ] `ShoppingBag.tsx` reads/writes real cart state instead of mock initial items
-- [ ] Cart merges guest cart into user cart on login
-- [ ] Checkout form data (address, shipping) saved against the order, not thrown away
-- [ ] Real shipping method logic (even simple flat-rate per category/weight to start)
-- [ ] Discount code field actually validates against `discounts` table
+- [x] Cart persisted per session (guest) and per user (logged in) — guest carts use local storage, and signed-in carts sync to Supabase when available
+- [x] `ShoppingBag.tsx` reads/writes real cart state instead of mock initial items
+- [x] Cart merges guest cart into user cart on login
+- [x] Checkout form data (address, shipping) saved against the order, not thrown away
+- [x] Real shipping method logic (even simple flat-rate per category/weight to start)
+- [x] Discount code field actually validates against `discounts` table
 
 ## Phase 6 — Payments & Order Lifecycle
 Goal: replace the fake 2-second spinner with real payment and a real order record.
 
-- [ ] Integrate Paystack (or Flutterwave/Stripe) for payment
-- [ ] Webhook handler to confirm payment and update order status
-- [ ] Order status lifecycle: `pending` → `paid` → `shipped` → `delivered` (+ `cancelled`/`refunded`)
-- [ ] Order confirmation shown to user from real order data, not a static message
-- [ ] Admin can view/update order status manually
+- [x] Integrate Paystack (or Flutterwave/Stripe) for payment
+- [x] Webhook handler to confirm payment and update order status
+- [x] Order status lifecycle: `pending` → `paid` → `shipped` → `delivered` (+ `cancelled`/`refunded`)
+- [x] Order confirmation shown to user from real order data, not a static message
+- [x] Admin can view/update order status manually
 
 ## Phase 7 — Supporting Features
 Goal: round out the commerce experience.
 
-- [ ] Reviews: wire `ReviewProduct.tsx` submission to the `reviews` table (currently just `console.log`s)
-- [ ] Display real reviews on `ProductDescription.tsx` instead of the 3 hardcoded ones
-- [ ] Wishlist/favorites (persisted, not just a UI trigger)
-- [ ] Coupons/discounts management in admin
+- [x] Reviews: wire `ReviewProduct.tsx` submission to the `reviews` table (currently just `console.log`s)
+- [x] Display real reviews on `ProductDescription.tsx` instead of the 3 hardcoded ones
+- [x] Wishlist/favorites (persisted, not just a UI trigger)
+- [x] Coupons/discounts management in admin
 - [ ] Store locator — either keep as real static content (rename/repurpose) or remove if no longer relevant to a general e-commerce brand
 
 ## Phase 8 — Notifications
-- [ ] Order confirmation email (Resend/SendGrid/etc.)
-- [ ] Admin new-order alert
-- [ ] Contact form (`CustomerCare.tsx`) actually sends somewhere instead of reloading the page
+- [x] In-app notifications for order updates and other events
+- [x] Order confirmation email (Resend/SendGrid/etc.)
+- [x] Admin new-order alert
+- [x] Contact form (`CustomerCare.tsx`) actually sends somewhere instead of reloading the page
 
 ## Phase 9 — Content & Brand De-Jewelry Pass
 Goal: lowest technical risk, do this once the app actually functions. Update copy/imagery in:
-- [ ] `Footer.tsx`, `LargeHero.tsx`, `EditorialSection.tsx`
-- [ ] `FiftyFiftySection.tsx`, `OneThirdTwoThirdsSection.tsx`
-- [ ] `OurStory.tsx`, `Sustainability.tsx`
-- [ ] `SizeGuide.tsx` — either generalize (per-category sizing) or make category-conditional
-- [ ] `PrivacyPolicy.tsx`, `TermsOfService.tsx` — replace "Ahia Jewelry Inc." references
-- [ ] `Navigation.tsx` — replace hardcoded jewelry categories with dynamic categories from DB
+- [x] `Footer.tsx`, `LargeHero.tsx`, `EditorialSection.tsx`
+- [x] `FiftyFiftySection.tsx`, `OneThirdTwoThirdsSection.tsx`
+- [x] `OurStory.tsx`, `Sustainability.tsx`
+- [x] `SizeGuide.tsx` — either generalize (per-category sizing) or make category-conditional
+- [x] `PrivacyPolicy.tsx`, `TermsOfService.tsx` — replace "Ahia Jewelry Inc." references
+- [x] `Navigation.tsx` — replace hardcoded jewelry categories with dynamic categories from DB
 
-## Phase 10 — Testing & QA
+## Phase 10 — Boutique & Fashion Enhancements
+- [x] Multi-dimensional product variants (visual color and size swatches, smart stock indicators)
+- [x] Category-conditional dynamic Size Guide tabs
+- [x] Visual Lookbooks / Curated Collections page
+- [x] High-resolution hover zoom & improved product detail image gallery carousel
+- [x] Related products recommendation / "Complete the Look"
+
+## Phase 11 — Testing & QA
 - [ ] Add a test runner (Vitest recommended given the Vite setup)
 - [ ] Unit tests for cart logic, price/discount calculations
 - [ ] Integration tests for checkout → order creation → payment confirmation
 - [ ] RLS policy tests (confirm non-admins truly can't write to admin-only tables)
 - [ ] Manual QA pass across all pages listed in the audit
 
-## Phase 11 — Production Readiness
+## Phase 12 — Production Readiness
 - [ ] Deployment pipeline (Vercel/Netlify + Supabase production project)
 - [ ] SEO basics: meta tags, sitemap, per-product/category URLs
 - [ ] Error monitoring (Sentry or similar)

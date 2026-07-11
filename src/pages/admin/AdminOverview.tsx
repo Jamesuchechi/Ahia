@@ -123,9 +123,9 @@ const AdminOverview: React.FC = () => {
         setLowStockItems([]);
       }
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to fetch dashboard metrics");
+      toast.error("Failed to fetch dashboard metrics");
     } finally {
       setLoading(false);
     }

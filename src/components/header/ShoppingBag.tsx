@@ -1,31 +1,21 @@
 import { X, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-
-interface CartItem {
-  id: number;
-  name: string;
-  price: string;
-  image: string;
-  quantity: number;
-  category: string;
-}
+import type { CartItem } from "@/hooks/useCart";
+import { formatPrice } from "@/lib/catalog";
 
 interface ShoppingBagProps {
   isOpen: boolean;
   onClose: () => void;
   cartItems: CartItem[];
-  updateQuantity: (id: number, newQuantity: number) => void;
+  updateQuantity: (id: string, newQuantity: number) => void;
   onViewFavorites?: () => void;
 }
 
 const ShoppingBag = ({ isOpen, onClose, cartItems, updateQuantity, onViewFavorites }: ShoppingBagProps) => {
   if (!isOpen) return null;
 
-  const subtotal = cartItems.reduce((sum, item) => {
-    const price = parseFloat(item.price.replace('€', '').replace(',', ''));
-    return sum + (price * item.quantity);
-  }, 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
     <div className="fixed inset-0 z-50 h-screen">
@@ -91,8 +81,13 @@ const ShoppingBag = ({ isOpen, onClose, cartItems, updateQuantity, onViewFavorit
                         <div>
                           <p className="text-sm font-light text-muted-foreground">{item.category}</p>
                           <h3 className="text-sm font-medium text-foreground">{item.name}</h3>
+                          {item.size && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {item.size.includes(":") ? item.size : `Size: ${item.size}`}
+                            </p>
+                          )}
                         </div>
-                        <p className="text-sm font-light text-foreground">{item.price}</p>
+                        <p className="text-sm font-light text-foreground">{formatPrice(item.price)}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-3">
                         <div className="flex items-center border border-border">
@@ -124,7 +119,7 @@ const ShoppingBag = ({ isOpen, onClose, cartItems, updateQuantity, onViewFavorit
               <div className="border-t border-border pt-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-light text-foreground">Subtotal</span>
-                  <span className="text-sm font-medium text-foreground">€{subtotal.toLocaleString('en-EU', { minimumFractionDigits: 2 })}</span>
+                  <span className="text-sm font-medium text-foreground">{formatPrice(subtotal)}</span>
                 </div>
                 
                 <p className="text-xs text-muted-foreground">

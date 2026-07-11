@@ -9,6 +9,7 @@ import Category from "./pages/Category";
 import ProductDetail from "./pages/ProductDetail";
 import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
+import Lookbook from "./pages/Lookbook";
 import OurStory from "./pages/about/OurStory";
 import Sustainability from "./pages/about/Sustainability";
 import SizeGuide from "./pages/about/SizeGuide";
@@ -23,7 +24,10 @@ import AdminProducts from "./pages/admin/AdminProducts";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminAttributes from "./pages/admin/AdminAttributes";
 import AdminOrders from "./pages/admin/AdminOrders";
+import AdminDiscounts from "./pages/admin/AdminDiscounts";
+import AdminLookbooks from "./pages/admin/AdminLookbooks";
 import { AuthProvider } from "./contexts/AuthProvider";
+import { CartProvider } from "./contexts/CartProvider";
 import { AdminRoute, ProtectedRoute } from "./components/AuthRoutes";
 
 const queryClient = new QueryClient();
@@ -32,6 +36,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
+        <CartProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -41,6 +46,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/category/:category" element={<Category />} />
             <Route path="/product/:productId" element={<ProductDetail />} />
+            <Route path="/lookbook" element={<Lookbook />} />
             
             {/* Protected Checkout Route */}
             <Route element={<ProtectedRoute />}>
@@ -55,6 +61,8 @@ const App = () => (
                 <Route path="categories" element={<AdminCategories />} />
                 <Route path="attributes" element={<AdminAttributes />} />
                 <Route path="orders" element={<AdminOrders />} />
+                <Route path="discounts" element={<AdminDiscounts />} />
+                <Route path="lookbooks" element={<AdminLookbooks />} />
               </Route>
             </Route>
 
@@ -69,6 +77,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </CartProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

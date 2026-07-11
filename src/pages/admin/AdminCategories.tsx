@@ -83,9 +83,9 @@ const AdminCategories: React.FC = () => {
 
       if (error) throw error;
       setCategories(data || []);
-    } catch (err: any) {
-      console.error("Error fetching categories:", err);
-      toast.error(err.message || "Failed to load categories");
+    } catch {
+      console.error("Error fetching categories");
+      toast.error("Failed to load categories");
     } finally {
       setLoading(false);
     }
@@ -123,9 +123,9 @@ const AdminCategories: React.FC = () => {
       setParentId("none");
       setSortOrder(0);
       fetchCategories();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to add category");
+    } catch {
+      console.error("Failed to add category");
+      toast.error("Failed to add category");
     } finally {
       setIsSubmitting(false);
     }
@@ -166,9 +166,9 @@ const AdminCategories: React.FC = () => {
       toast.success("Category updated successfully");
       setEditingCategory(null);
       fetchCategories();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to update category");
+    } catch {
+      console.error("Failed to update category");
+      toast.error("Failed to update category");
     } finally {
       setIsUpdating(false);
     }
@@ -209,9 +209,9 @@ const AdminCategories: React.FC = () => {
 
       toast.success("Category deleted successfully");
       fetchCategories();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to delete category");
+    } catch {
+      console.error("Failed to delete category");
+      toast.error("Failed to delete category");
     }
   };
 

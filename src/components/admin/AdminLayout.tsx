@@ -8,7 +8,9 @@ import {
   Package, 
   FolderTree, 
   Sliders, 
-  ShoppingCart, 
+  ShoppingCart,
+  Tag,
+  BookOpen,
   LogOut, 
   Menu, 
   X, 
@@ -34,6 +36,8 @@ const AdminLayout: React.FC = () => {
     { name: "Categories", href: "/admin/categories", icon: FolderTree },
     { name: "Attributes", href: "/admin/attributes", icon: Sliders },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
+    { name: "Discounts", href: "/admin/discounts", icon: Tag },
+    { name: "Lookbooks", href: "/admin/lookbooks", icon: BookOpen },
   ];
 
   const handleSignOut = async () => {

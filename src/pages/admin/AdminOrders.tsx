@@ -39,7 +39,7 @@ interface Order {
   subtotal: number;
   discount_amount: number;
   total: number;
-  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+  status: "pending" | "processing" | "paid" | "shipped" | "delivered" | "cancelled" | "refunded";
   created_at: string;
 }
 
@@ -78,9 +78,9 @@ const AdminOrders: React.FC = () => {
 
       if (error) throw error;
       setOrders(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to load orders");
+      toast.error("Failed to load orders");
     } finally {
       setLoading(false);
     }
@@ -130,7 +130,7 @@ const AdminOrders: React.FC = () => {
       );
 
       setOrderItems(populatedItems);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       toast.error("Failed to load order items details");
     } finally {
@@ -160,14 +160,27 @@ const AdminOrders: React.FC = () => {
 
       if (error) throw error;
 
+      const { error: historyError } = await supabase.from("order_status_history").insert({
+        order_id: selectedOrder.id,
+        status: editStatus,
+        notes: "Order status updated from the admin dashboard.",
+      });
+
+      if (historyError) throw historyError;
+
       toast.success("Order status updated successfully!");
+      
+      // Asynchronously trigger status update email to the customer
+      void supabase.functions.invoke("send-order-email", {
+        body: { order_id: selectedOrder.id, type: editStatus },
+      });
       
       // Update local states
       setSelectedOrder(prev => prev ? { ...prev, status: editStatus } : null);
       setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: editStatus } : o));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to update status");
+      toast.error("Failed to update status");
     } finally {
       setUpdatingStatus(false);
     }
@@ -239,9 +252,11 @@ const AdminOrders: React.FC = () => {
                 <SelectItem value="all" className="font-light">All Statuses</SelectItem>
                 <SelectItem value="pending" className="font-light">Pending</SelectItem>
                 <SelectItem value="processing" className="font-light">Processing</SelectItem>
+                <SelectItem value="paid" className="font-light">Paid</SelectItem>
                 <SelectItem value="shipped" className="font-light">Shipped</SelectItem>
                 <SelectItem value="delivered" className="font-light">Delivered</SelectItem>
                 <SelectItem value="cancelled" className="font-light">Cancelled</SelectItem>
+                <SelectItem value="refunded" className="font-light">Refunded</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -364,7 +379,7 @@ const AdminOrders: React.FC = () => {
                 <div className="flex gap-2 items-center">
                   <Select 
                     value={editStatus} 
-                    onValueChange={(val: any) => setEditStatus(val)}
+                    onValueChange={(val) => setEditStatus(val as Order["status"])}
                     disabled={updatingStatus}
                   >
                     <SelectTrigger className="font-light bg-background w-[160px] h-9">

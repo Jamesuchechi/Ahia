@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { 
+import {
   Package, 
   Plus, 
   Search, 
@@ -21,7 +21,9 @@ import {
   PlusCircle, 
   Settings, 
   Layers, 
-  ExternalLink 
+  ExternalLink,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import {
   Dialog,
@@ -39,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { reorderImagesById } from "@/lib/adminImageOrder";
 
 // Interfaces
 interface Product {
@@ -169,14 +172,14 @@ const AdminProducts: React.FC = () => {
       setAttributeValues(valData || []);
 
       // 3. Fetch products
-      let query = supabase.from("products").select("*, categories:category_id(name, slug)");
+      const query = supabase.from("products").select("*, categories:category_id(name, slug)");
       
       const { data: prodData, error } = await query;
       if (error) throw error;
       setProducts(prodData || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to fetch catalog data");
+      toast.error("Failed to fetch catalog data");
     } finally {
       setLoading(false);
     }
@@ -227,7 +230,7 @@ const AdminProducts: React.FC = () => {
       );
 
       setVariants(populatedVariants);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       toast.error("Failed to load variants");
     } finally {
@@ -247,7 +250,7 @@ const AdminProducts: React.FC = () => {
 
       if (error) throw error;
       setImages(data || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       toast.error("Failed to load images");
     } finally {
@@ -296,9 +299,9 @@ const AdminProducts: React.FC = () => {
         // Open edit dialog immediately so they can add variants and images
         handleEditClick(data as Product);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to create product");
+      toast.error("Failed to create product");
     } finally {
       setIsSubmittingProduct(false);
     }
@@ -341,9 +344,9 @@ const AdminProducts: React.FC = () => {
       if (error) throw error;
       toast.success("Product details updated successfully!");
       fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to update product");
+      toast.error("Failed to update product");
     } finally {
       setIsSubmittingProduct(false);
     }
@@ -358,9 +361,9 @@ const AdminProducts: React.FC = () => {
       if (error) throw error;
       toast.success("Product deleted successfully");
       fetchData();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to delete product");
+      toast.error("Failed to delete product");
     }
   };
 
@@ -412,9 +415,9 @@ const AdminProducts: React.FC = () => {
       setNewPriceOverride("");
       setSelectedAttrValues({});
       fetchVariants(editingProduct.id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to add variant");
+      toast.error("Failed to add variant");
     } finally {
       setIsCreatingVariant(false);
     }
@@ -431,9 +434,9 @@ const AdminProducts: React.FC = () => {
       if (editingProduct) {
         fetchVariants(editingProduct.id);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to delete variant");
+      toast.error("Failed to delete variant");
     }
   };
 
@@ -458,9 +461,9 @@ const AdminProducts: React.FC = () => {
       setImageUrlInput("");
       setImageAltInput("");
       fetchImages(editingProduct.id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to add image");
+      toast.error("Failed to add image");
     }
   };
 
@@ -504,10 +507,10 @@ const AdminProducts: React.FC = () => {
 
       toast.success("File uploaded and linked successfully!");
       fetchImages(editingProduct.id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       toast.error(
-        `Failed to upload image. ${err.message || ""}\n` +
+        "Failed to upload image. " +
         "Ensure the bucket 'product-images' exists in Supabase Storage and is set to public."
       );
     } finally {
@@ -526,9 +529,34 @@ const AdminProducts: React.FC = () => {
       if (editingProduct) {
         fetchImages(editingProduct.id);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || "Failed to remove image");
+      toast.error("Failed to remove image");
+    }
+  };
+
+  const handleReorderImage = async (imgId: string, direction: "up" | "down") => {
+    if (!editingProduct) return;
+
+    const reorderedImages = reorderImagesById(images, imgId, direction);
+    if (reorderedImages === images) {
+      return;
+    }
+
+    try {
+      const updates = reorderedImages.map((image, index) => ({
+        id: image.id,
+        sort_order: index,
+      }));
+
+      const { error } = await supabase.from("product_images").upsert(updates);
+      if (error) throw error;
+
+      setImages(reorderedImages);
+      toast.success("Image order updated");
+    } catch (err: unknown) {
+      console.error(err);
+      toast.error("Failed to update image order");
     }
   };
 
@@ -613,7 +641,7 @@ const AdminProducts: React.FC = () => {
               slug: pSlug,
               description: row["description"] || "",
               base_price: pPrice,
-              status: (row["status"] as any) || "published",
+              status: (row["status"] as unknown as string) || "published",
               category_id: catId
             }, { onConflict: "slug" })
             .select()
@@ -709,7 +737,7 @@ const AdminProducts: React.FC = () => {
         setIsCsvOpen(false);
         setCsvFile(null);
         fetchData();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("CSV import error:", err);
         toast.error("An error occurred during CSV parsing");
       } finally {
@@ -1037,7 +1065,7 @@ const AdminProducts: React.FC = () => {
               <Label htmlFor="prod-status">Catalog Status</Label>
               <Select
                 value={status}
-                onValueChange={(val: any) => setStatus(val)}
+                onValueChange={(val: string) => setStatus(val as "draft" | "published" | "archived")}
                 disabled={isSubmittingProduct}
               >
                 <SelectTrigger id="prod-status" className="font-light bg-background">
@@ -1169,7 +1197,7 @@ const AdminProducts: React.FC = () => {
                   <Label htmlFor="edit-status">Status</Label>
                   <Select
                     value={status}
-                    onValueChange={(val: any) => setStatus(val)}
+                    onValueChange={(val) => setStatus(val as "draft" | "published" | "archived")}
                     disabled={isSubmittingProduct}
                   >
                     <SelectTrigger id="edit-status" className="font-light bg-background">
@@ -1466,7 +1494,7 @@ const AdminProducts: React.FC = () => {
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {images.map((img) => (
+                    {images.map((img, index) => (
                       <div 
                         key={img.id} 
                         className="group relative border border-border rounded-md overflow-hidden bg-muted/10 aspect-square flex flex-col justify-between"
@@ -1478,14 +1506,34 @@ const AdminProducts: React.FC = () => {
                         />
                         <div className="absolute inset-x-0 bottom-0 bg-black/60 p-2 text-[10px] text-white flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
                           <span className="truncate pr-2 font-light">{img.alt_text || "Image"}</span>
-                          <button
-                            type="button"
-                            className="text-red-400 hover:text-red-200 transition-colors p-1"
-                            onClick={() => handleDeleteImage(img.id)}
-                            aria-label="Remove image"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              className="text-white/80 hover:text-white transition-colors p-1"
+                              onClick={() => handleReorderImage(img.id, "up")}
+                              aria-label="Move image up"
+                              disabled={index === 0}
+                            >
+                              <ArrowUp size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              className="text-white/80 hover:text-white transition-colors p-1"
+                              onClick={() => handleReorderImage(img.id, "down")}
+                              aria-label="Move image down"
+                              disabled={index === images.length - 1}
+                            >
+                              <ArrowDown size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              className="text-red-400 hover:text-red-200 transition-colors p-1"
+                              onClick={() => handleDeleteImage(img.id)}
+                              aria-label="Remove image"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </div>
                         {/* URL Link */}
                         <a 

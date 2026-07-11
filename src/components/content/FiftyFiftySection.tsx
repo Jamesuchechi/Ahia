@@ -21,7 +21,7 @@ const FiftyFiftySection = () => {
               Organic Forms
             </h3>
             <p className="text-sm font-light text-foreground">
-              Nature-inspired pieces with fluid, sculptural details
+              Nature-inspired designs with fluid, sculptural details
             </p>
           </div>
         </div>
@@ -41,7 +41,7 @@ const FiftyFiftySection = () => {
               Chain Collection
             </h3>
             <p className="text-sm font-light text-foreground">
-              Refined links and connections in precious metals
+              Refined links and connections in modern structures
             </p>
           </div>
         </div>

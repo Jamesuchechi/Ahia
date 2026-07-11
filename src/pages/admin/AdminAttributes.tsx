@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,7 +34,7 @@ const AdminAttributes: React.FC = () => {
   const [newValue, setNewValue] = useState("");
   const [isSubmittingValue, setIsSubmittingValue] = useState(false);
 
-  const fetchAttributes = async () => {
+  const fetchAttributes = useCallback(async () => {
     setLoadingAttributes(true);
     try {
       const { data, error } = await supabase
@@ -49,14 +49,27 @@ const AdminAttributes: React.FC = () => {
       if (data && data.length > 0 && !selectedAttribute) {
         setSelectedAttribute(data[0]);
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to fetch attributes");
+    } catch {
+      console.error("Failed to fetch attributes");
+      toast.error("Failed to fetch attributes");
     } finally {
       setLoadingAttributes(false);
     }
-  };
+  }, [selectedAttribute, setAttributes, setLoadingAttributes, setSelectedAttribute]); // toast is stable from sonner
 
+  useEffect(() => {
+    fetchAttributes();
+  }, [fetchAttributes]);
+
+  useEffect(() => {
+    if (selectedAttribute) {
+      fetchAttributeValues(selectedAttribute.id);
+    } else {
+      setAttributeValues([]);
+    }
+  }, [selectedAttribute]);
+
+  // Fetch values for a given attribute
   const fetchAttributeValues = async (attributeId: string) => {
     setLoadingValues(true);
     try {
@@ -68,25 +81,13 @@ const AdminAttributes: React.FC = () => {
 
       if (error) throw error;
       setAttributeValues(data || []);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to fetch attribute values");
+    } catch (err) {
+      console.error("Failed to fetch attribute values", err);
+      toast.error("Failed to fetch attribute values");
     } finally {
       setLoadingValues(false);
     }
   };
-
-  useEffect(() => {
-    fetchAttributes();
-  }, []);
-
-  useEffect(() => {
-    if (selectedAttribute) {
-      fetchAttributeValues(selectedAttribute.id);
-    } else {
-      setAttributeValues([]);
-    }
-  }, [selectedAttribute]);
 
   const handleAddAttribute = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,9 +109,9 @@ const AdminAttributes: React.FC = () => {
       if (data) {
         setSelectedAttribute(data as Attribute);
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to create attribute");
+    } catch {
+      console.error("Failed to create attribute");
+      toast.error("Failed to create attribute");
     } finally {
       setIsSubmittingAttr(false);
     }
@@ -134,9 +135,9 @@ const AdminAttributes: React.FC = () => {
       toast.success("Value added successfully");
       setNewValue("");
       fetchAttributeValues(selectedAttribute.id);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to add value");
+    } catch {
+      console.error("Failed to add value");
+      toast.error("Failed to add value");
     } finally {
       setIsSubmittingValue(false);
     }
@@ -186,9 +187,9 @@ const AdminAttributes: React.FC = () => {
         setSelectedAttribute(null);
       }
       fetchAttributes();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to delete attribute");
+    } catch {
+      console.error("Failed to delete attribute");
+      toast.error("Failed to delete attribute");
     }
   };
 
@@ -221,9 +222,9 @@ const AdminAttributes: React.FC = () => {
       if (selectedAttribute) {
         fetchAttributeValues(selectedAttribute.id);
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Failed to delete value");
+    } catch {
+      console.error("Failed to delete value");
+      toast.error("Failed to delete value");
     }
   };
 

@@ -11,7 +11,7 @@ const OneThirdTwoThirdsSection = () => {
             <div className="w-full h-[500px] lg:h-[800px] mb-3 overflow-hidden">
               <img 
                 src={organicEarring} 
-                alt="Artisan crafted jewelry" 
+                alt="Artisan crafted design" 
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>
@@ -21,7 +21,7 @@ const OneThirdTwoThirdsSection = () => {
               Artisan Craft
             </h3>
             <p className="text-sm font-light text-foreground">
-              Handcrafted pieces with meticulous attention to detail
+              Handcrafted items with meticulous attention to detail
             </p>
           </div>
         </div>
@@ -31,7 +31,7 @@ const OneThirdTwoThirdsSection = () => {
             <div className="w-full h-[500px] lg:h-[800px] mb-3 overflow-hidden">
               <img 
                 src={circularCollection} 
-                alt="Circular jewelry collection" 
+                alt="Circular design collection" 
                 className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>

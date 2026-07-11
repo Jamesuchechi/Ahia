@@ -1,14 +1,14 @@
-import { ArrowRight, X, Minus, Plus, User, LogOut, Shield } from "lucide-react";
+import { ArrowRight, X, User, LogOut, Shield, Bell, Trash2, CheckCheck, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Link, useNavigate } from "react-router-dom";
 import ShoppingBag from "./ShoppingBag";
-import pantheonImage from "@/assets/pantheon.jpg";
-import eclipseImage from "@/assets/eclipse.jpg";
-import haloImage from "@/assets/halo.jpg";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { getCatalogCategories, type CatalogProduct, formatPrice } from "@/lib/catalog";
+import { useCart } from "@/hooks/useCart";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useWishlist } from "@/hooks/useWishlist";
+import { supabase } from "@/lib/supabase";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,67 +18,33 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface CartItem {
-  id: number;
-  name: string;
-  price: string;
-  image: string;
-  quantity: number;
-  category: string;
-}
-
 const Navigation = () => {
   const { user, profile, isAdmin, signOut } = useAuth();
+  const { items, updateQuantity } = useCart();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  const { wishlistIds, toggle: toggleWishlist } = useWishlist();
+  const [wishlistProducts, setWishlistProducts] = useState<CatalogProduct[]>([]);
+  const [loadingWishlist, setLoadingWishlist] = useState(false);
+  const navigate = useNavigate();
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [offCanvasType, setOffCanvasType] = useState<'favorites' | null>(null);
+  const [offCanvasType, setOffCanvasType] = useState<'favorites' | 'notifications' | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShoppingBagOpen, setIsShoppingBagOpen] = useState(false);
-  
-  // Shopping bag state with 3 mock items
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: 1,
-      name: "Pantheon",
-      price: "€2,850",
-      image: pantheonImage,
-      quantity: 1,
-      category: "Earrings"
-    },
-    {
-      id: 2,
-      name: "Eclipse",
-      price: "€3,200", 
-      image: eclipseImage,
-      quantity: 1,
-      category: "Bracelets"
-    },
-    {
-      id: 3,
-      name: "Halo",
-      price: "€1,950",
-      image: haloImage, 
-      quantity: 1,
-      category: "Earrings"
-    }
-  ]);
+  const [searchValue, setSearchValue] = useState("");
+  const [categories, setCategories] = useState<Array<{id:string; name:string; slug:string}>>([]);
 
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  
-  const updateQuantity = (id: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      setCartItems(items => items.filter(item => item.id !== id));
-    } else {
-      setCartItems(items => 
-        items.map(item => 
-          item.id === id ? { ...item, quantity: newQuantity } : item
-        )
-      );
-    }
-  };
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+
   
   // Preload dropdown images for faster display
   useEffect(() => {
+    const loadCategories = async () => {
+      const nextCategories = await getCatalogCategories();
+      setCategories(nextCategories);
+    };
+
+    loadCategories();
     const imagesToPreload = [
       "/rings-collection.png",
       "/earrings-collection.png", 
@@ -93,26 +59,122 @@ const Navigation = () => {
     });
   }, []);
 
+  // Load products in the wishlist when the wishlistIds list changes
+  useEffect(() => {
+    if (wishlistIds.length === 0) {
+      setWishlistProducts([]);
+      return;
+    }
+
+    const loadWishlistProducts = async () => {
+      setLoadingWishlist(true);
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select("id, name, slug, description, base_price, status, category_id, created_at, categories:category_id(name, slug)")
+          .in("id", wishlistIds);
+
+        if (error) throw error;
+        
+        interface RawWishlistProduct {
+          id: string;
+          slug: string;
+          name: string;
+          description?: string | null;
+          base_price: string | number;
+          status: string;
+          category_id: string;
+          categories: { name: string; slug: string } | null;
+          created_at: string;
+        }
+
+        // Map the results to CatalogProduct
+        const mapped: CatalogProduct[] = ((data as unknown as RawWishlistProduct[]) || []).map((product) => ({
+          id: product.id,
+          slug: product.slug,
+          name: product.name,
+          description: product.description || "",
+          base_price: Number(product.base_price || 0),
+          status: product.status,
+          category_id: product.category_id,
+          category_name: product.categories?.name || null,
+          category_slug: product.categories?.slug || null,
+          created_at: product.created_at,
+          images: [],
+          variants: [],
+        }));
+
+        interface RawProductImage {
+          id: string;
+          url: string;
+          alt_text: string | null;
+          sort_order: number;
+        }
+
+        interface RawProductVariant {
+          id: string;
+          sku: string;
+          stock_qty: number;
+          price_override: number | null;
+        }
+
+        // Fetch image & variants details for each product
+        const fullyLoaded = await Promise.all(
+          mapped.map(async (product) => {
+            const { data: imageData } = await supabase
+              .from("product_images")
+              .select("id, url, alt_text, sort_order")
+              .eq("product_id", product.id)
+              .order("sort_order", { ascending: true });
+
+            const { data: variantData } = await supabase
+              .from("product_variants")
+              .select("id, sku, stock_qty, price_override")
+              .eq("product_id", product.id);
+
+            return {
+              ...product,
+              images: ((imageData as unknown as RawProductImage[]) || []).map((img) => ({ 
+                id: img.id, 
+                url: img.url, 
+                alt_text: img.alt_text || "", 
+                sort_order: img.sort_order 
+              })),
+              variants: ((variantData as unknown as RawProductVariant[]) || []).map((v) => ({ 
+                id: v.id, 
+                sku: v.sku, 
+                stock_qty: v.stock_qty, 
+                price_override: v.price_override ? Number(v.price_override) : null 
+              })),
+            };
+          })
+        );
+
+        setWishlistProducts(fullyLoaded);
+      } catch (err) {
+        console.error("Failed to load wishlist products:", err);
+      } finally {
+        setLoadingWishlist(false);
+      }
+    };
+
+    void loadWishlistProducts();
+  }, [wishlistIds]);
+
   const popularSearches = [
-    "Gold Rings",
-    "Silver Necklaces", 
-    "Pearl Earrings",
-    "Designer Bracelets",
-    "Wedding Rings",
-    "Vintage Collection"
+    "Sculptural Objects",
+    "Minimalist Designs", 
+    "Signature Collection",
+    "Handcrafted Essentials",
+    "New Arrivals",
+    "Sustainable Art"
   ];
   
   const navItems = [
     { 
       name: "Shop", 
-      href: "/category/shop",
-      submenuItems: [
-        "Rings",
-        "Necklaces", 
-        "Earrings",
-        "Bracelets",
-        "Watches"
-      ],
+      href: "/category/all",
+      submenuItems: categories.map((category) => category.name),
       images: [
         { src: "/rings-collection.png", alt: "Rings Collection", label: "Rings" },
         { src: "/earrings-collection.png", alt: "Earrings Collection", label: "Earrings" }
@@ -132,6 +194,10 @@ const Navigation = () => {
         { src: "/arcus-bracelet.png", alt: "Arcus Bracelet", label: "Arcus Bracelet" },
         { src: "/span-bracelet.png", alt: "Span Bracelet", label: "Span Bracelet" }
       ]
+    },
+    { 
+      name: "Lookbook", 
+      href: "/lookbook",
     },
     { 
       name: "About", 
@@ -263,6 +329,19 @@ const Navigation = () => {
             </Link>
           )}
 
+          {user && (
+            <button
+              className="p-2 text-nav-foreground hover:text-nav-hover transition-colors duration-200 relative"
+              aria-label="Notifications"
+              onClick={() => setOffCanvasType('notifications')}
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              )}
+            </button>
+          )}
+
           <button 
             className="hidden lg:block p-2 text-nav-foreground hover:text-nav-hover transition-colors duration-200"
             aria-label="Favorites"
@@ -290,7 +369,7 @@ const Navigation = () => {
       </div>
 
       {/* Full width dropdown */}
-      {activeDropdown && (
+      {activeDropdown && navItems.find(item => item.name === activeDropdown)?.submenuItems && (
         <div 
           className="absolute top-full left-0 right-0 bg-nav border-b border-border z-50"
           onMouseEnter={() => setActiveDropdown(activeDropdown)}
@@ -306,7 +385,7 @@ const Navigation = () => {
                      ?.submenuItems.map((subItem, index) => (
                       <li key={index}>
                         <Link 
-                          to={activeDropdown === "About" ? `/about/${subItem.toLowerCase().replace(/\s+/g, '-')}` : `/category/${subItem.toLowerCase()}`}
+                          to={activeDropdown === "About" ? `/about/${subItem.toLowerCase().replace(/\s+/g, '-')}` : `/category/${categories.find((category) => category.name === subItem)?.slug || subItem.toLowerCase()}`}
                           className="text-nav-foreground hover:text-nav-hover transition-colors duration-200 text-sm font-light block py-2"
                         >
                           {subItem}
@@ -370,9 +449,19 @@ const Navigation = () => {
                   </svg>
                   <input
                     type="text"
-                    placeholder="Search for jewelry..."
+                    placeholder="Search for products..."
                     className="flex-1 bg-transparent text-nav-foreground placeholder:text-nav-foreground/60 outline-none text-lg"
                     autoFocus
+                    value={searchValue}
+                    onChange={(event) => setSearchValue(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        const params = new URLSearchParams();
+                        params.set("q", searchValue.trim());
+                        navigate(`/category/all?${params.toString()}`);
+                        setIsSearchOpen(false);
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -385,6 +474,12 @@ const Navigation = () => {
                     <button
                       key={index}
                       className="text-nav-foreground hover:text-nav-hover text-sm font-light py-2 px-4 border border-border rounded-full transition-colors duration-200 hover:border-nav-hover"
+                      onClick={() => {
+                        const params = new URLSearchParams();
+                        params.set("q", search);
+                        navigate(`/category/all?${params.toString()}`);
+                        setIsSearchOpen(false);
+                      }}
                     >
                       {search}
                     </button>
@@ -414,7 +509,7 @@ const Navigation = () => {
                      {item.submenuItems.map((subItem, subIndex) => (
                        <Link
                          key={subIndex}
-                         to={item.name === "About" ? `/about/${subItem.toLowerCase().replace(/\s+/g, '-')}` : `/category/${subItem.toLowerCase()}`}
+                         to={item.name === "About" ? `/about/${subItem.toLowerCase().replace(/\s+/g, '-')}` : `/category/${categories.find((category) => category.name === subItem)?.slug || subItem.toLowerCase()}`}
                          className="text-nav-foreground/70 hover:text-nav-hover text-sm font-light block py-1"
                          onClick={() => setIsMobileMenuOpen(false)}
                        >
@@ -433,7 +528,7 @@ const Navigation = () => {
       <ShoppingBag 
         isOpen={isShoppingBagOpen}
         onClose={() => setIsShoppingBagOpen(false)}
-        cartItems={cartItems}
+        cartItems={items}
         updateQuantity={updateQuantity}
         onViewFavorites={() => {
           setIsShoppingBagOpen(false);
@@ -454,7 +549,10 @@ const Navigation = () => {
           <div className="absolute right-0 top-0 h-screen w-96 bg-background border-l border-border animate-slide-in-right flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-lg font-light text-foreground">Your Favorites</h2>
+              <h2 className="text-lg font-light text-foreground flex items-center gap-2">
+                <Heart className="w-4 h-4 fill-foreground" />
+                <span>Your Favorites</span>
+              </h2>
               <button
                 onClick={() => setOffCanvasType(null)}
                 className="p-2 text-foreground hover:text-muted-foreground transition-colors"
@@ -465,10 +563,181 @@ const Navigation = () => {
             </div>
             
             {/* Content */}
-            <div className="p-6">
-              <p className="text-muted-foreground text-sm mb-6">
-                You haven't added any favorites yet. Browse our collection and click the heart icon to save items you love.
-              </p>
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingWishlist ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="w-6 h-6 border-t-2 border-foreground rounded-full animate-spin" />
+                </div>
+              ) : wishlistProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground text-sm mb-6">
+                    You haven't added any favorites yet. Browse our collection and click the heart icon to save items you love.
+                  </p>
+                  <Link 
+                    to="/category/all" 
+                    onClick={() => setOffCanvasType(null)}
+                    className="inline-block text-xs font-light tracking-wider uppercase border border-foreground px-6 py-3 hover:bg-foreground hover:text-background transition-colors duration-300"
+                  >
+                    Shop Collection
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {wishlistProducts.map((product) => (
+                    <div key={product.id} className="flex gap-4 pb-4 border-b border-border/50 last:border-b-0">
+                      <Link 
+                        to={`/product/${product.slug}`}
+                        onClick={() => setOffCanvasType(null)}
+                        className="w-20 h-20 bg-muted overflow-hidden flex-shrink-0"
+                      >
+                        {product.images?.[0] ? (
+                          <img 
+                            src={product.images[0].url} 
+                            alt={product.images[0].alt_text} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No img</div>
+                        )}
+                      </Link>
+                      
+                      <div className="flex-1 min-w-0">
+                        <Link 
+                          to={`/product/${product.slug}`}
+                          onClick={() => setOffCanvasType(null)}
+                          className="block text-sm font-light text-foreground hover:underline truncate"
+                        >
+                          {product.name}
+                        </Link>
+                        <p className="text-xs text-muted-foreground font-light mt-1">
+                          {product.category_name}
+                        </p>
+                        <p className="text-sm font-light text-foreground mt-2">
+                          {formatPrice(product.base_price)}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => toggleWishlist(product.id, product.name)}
+                        className="p-1.5 self-start text-muted-foreground hover:text-destructive transition-colors"
+                        aria-label="Remove from favorites"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Off-canvas overlay */}
+      {offCanvasType === 'notifications' && (
+        <div className="fixed inset-0 z-50 h-screen">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50 h-screen"
+            onClick={() => setOffCanvasType(null)}
+          />
+          
+          {/* Off-canvas panel */}
+          <div className="absolute right-0 top-0 h-screen w-[420px] max-w-full bg-background border-l border-border animate-slide-in-right flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-light text-foreground">Notifications</h2>
+                {unreadCount > 0 && (
+                  <span className="text-[10px] font-semibold bg-red-500 text-white px-2 py-0.5 rounded-full">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllAsRead}
+                    className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Mark all as read"
+                  >
+                    <CheckCheck size={18} />
+                  </button>
+                )}
+                <button
+                  onClick={() => setOffCanvasType(null)}
+                  className="p-2 text-foreground hover:text-muted-foreground transition-colors"
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="text-center py-20 px-6">
+                  <p className="text-muted-foreground text-sm font-light">
+                    All caught up! No notifications yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/60">
+                  {notifications.map((notif) => (
+                    <div 
+                      key={notif.id} 
+                      className={`p-6 transition-colors duration-200 relative group flex gap-3 ${
+                        !notif.read ? "bg-muted/10" : ""
+                      }`}
+                    >
+                      {/* Unread dot indicator */}
+                      {!notif.read && (
+                        <div className="absolute left-2.5 top-[26px] w-2 h-2 bg-blue-500 rounded-full" />
+                      )}
+                      
+                      <div className="flex-1 space-y-1.5 pr-8">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className={`text-sm font-medium text-foreground ${!notif.read ? "font-normal" : "font-light"}`}>
+                            {notif.title}
+                          </h3>
+                        </div>
+                        <p className="text-xs text-muted-foreground font-light leading-relaxed">
+                          {notif.message}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/60 font-light">
+                          {new Date(notif.created_at).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="absolute right-4 top-5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {!notif.read && (
+                          <button
+                            onClick={() => markAsRead(notif.id)}
+                            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors rounded"
+                            title="Mark as read"
+                          >
+                            <CheckCheck size={14} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteNotification(notif.id)}
+                          className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors rounded"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

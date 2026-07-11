@@ -5,125 +5,95 @@ import {
 } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import pantheonImage from "@/assets/pantheon.jpg";
-import eclipseImage from "@/assets/eclipse.jpg";
-import haloImage from "@/assets/halo.jpg";
-import obliqueImage from "@/assets/oblique.jpg";
-import lintelImage from "@/assets/lintel.jpg";
-import shadowlineImage from "@/assets/shadowline.jpg";
+import { useEffect, useState } from "react";
 import organicEarring from "@/assets/organic-earring.png";
 import linkBracelet from "@/assets/link-bracelet.png";
+import { getFeaturedProducts, formatPrice, type CatalogProduct } from "@/lib/catalog";
 
-interface Product {
-  id: number;
-  name: string;
-  category: string;
-  price: string;
-  image: string;
+interface ProductCarouselProps {
+  products?: CatalogProduct[];
 }
 
-const products: Product[] = [
-  {
-    id: 1,
-    name: "Pantheon",
-    category: "Earrings",
-    price: "€2,850",
-    image: pantheonImage,
-  },
-  {
-    id: 2,
-    name: "Eclipse",
-    category: "Bracelets",
-    price: "€3,200",
-    image: eclipseImage,
-  },
-  {
-    id: 3,
-    name: "Halo",
-    category: "Earrings",
-    price: "€1,950",
-    image: haloImage,
-  },
-  {
-    id: 4,
-    name: "Oblique",
-    category: "Earrings",
-    price: "€1,650",
-    image: obliqueImage,
-  },
-  {
-    id: 5,
-    name: "Lintel",
-    category: "Earrings",
-    price: "€2,250",
-    image: lintelImage,
-  },
-  {
-    id: 6,
-    name: "Shadowline",
-    category: "Bracelets",
-    price: "€3,950",
-    image: shadowlineImage,
-  },
-];
+const ProductCarousel = ({ products: initialProducts }: ProductCarouselProps) => {
+  const [products, setProducts] = useState<CatalogProduct[]>(initialProducts || []);
 
-const ProductCarousel = () => {
+  useEffect(() => {
+    if (initialProducts) {
+      setProducts(initialProducts);
+      return;
+    }
+
+    const loadProducts = async () => {
+      const featured = await getFeaturedProducts(8);
+      setProducts(featured);
+    };
+
+    loadProducts();
+  }, [initialProducts]);
+
   return (
     <section className="w-full mb-16 px-6">
       <Carousel
-          opts={{
-            align: "start",
-            loop: false,
-          }}
-          className="w-full"
-        >
-          <CarouselContent className="">
-            {products.map((product) => (
-               <CarouselItem
-                 key={product.id}
-                 className="basis-1/2 md:basis-1/3 lg:basis-1/4 pr-2 md:pr-4"
-               >
-                 <Link to={`/product/${product.id}`}>
+        opts={{
+          align: "start",
+          loop: false,
+        }}
+        className="w-full"
+      >
+        <CarouselContent className="">
+          {products.map((product) => {
+            const firstImg = product.images[0]?.url || (product.category_name === "Earrings" ? organicEarring : linkBracelet);
+            const hoverImg = product.images[1]?.url || firstImg;
+
+            return (
+              <CarouselItem
+                key={product.id}
+                className="basis-1/2 md:basis-1/3 lg:basis-1/4 pr-2 md:pr-4"
+              >
+                <Link to={`/product/${product.slug}`}>
                   <Card className="border-none shadow-none bg-transparent group">
                     <CardContent className="p-0">
-                      <div className="aspect-square mb-3 overflow-hidden bg-muted/10 relative">
+                      <div className="aspect-[4/5] mb-3 overflow-hidden bg-muted/10 relative">
                         <img
-                          src={product.image}
+                          src={firstImg}
                           alt={product.name}
-                          className="w-full h-full object-cover transition-all duration-300 group-hover:opacity-0"
+                          className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
                         />
-                        <img
-                          src={product.category === "Earrings" ? organicEarring : linkBracelet}
-                          alt={`${product.name} lifestyle`}
-                          className="absolute inset-0 w-full h-full object-cover transition-all duration-300 opacity-0 group-hover:opacity-100"
-                        />
-                        <div className="absolute inset-0 bg-black/[0.03]"></div>
-                        {(product.id === 1 || product.id === 3) && (
-                          <div className="absolute top-2 left-2 px-2 py-1 text-xs font-medium text-black">
+                        {hoverImg !== firstImg && (
+                          <img
+                            src={hoverImg}
+                            alt={`${product.name} alternate view`}
+                            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500 opacity-0 group-hover:opacity-100 group-hover:scale-105"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/[0.02]"></div>
+                        {product.created_at && new Date(product.created_at) > new Date("2026-06-01") && (
+                          <div className="absolute top-2 left-2 bg-background/95 border border-border px-2 py-0.5 text-[10px] tracking-wider uppercase font-medium text-foreground">
                             NEW
                           </div>
                         )}
                       </div>
-                     <div className="space-y-1">
-                       <p className="text-sm font-light text-foreground">
-                         {product.category}
-                       </p>
-                       <div className="flex justify-between items-center">
-                         <h3 className="text-sm font-medium text-foreground">
-                           {product.name}
-                         </h3>
-                         <p className="text-sm font-light text-foreground">
-                           {product.price}
-                         </p>
-                       </div>
-                     </div>
-                   </CardContent>
-                 </Card>
-                 </Link>
+                      <div className="space-y-1">
+                        <p className="text-[11px] uppercase tracking-wider font-light text-muted-foreground">
+                          {product.category_name || "Collection"}
+                        </p>
+                        <div className="flex justify-between items-start gap-2">
+                          <h3 className="text-sm font-light text-foreground line-clamp-1">
+                            {product.name}
+                          </h3>
+                          <p className="text-sm font-medium text-foreground">
+                            {formatPrice(product.base_price)}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               </CarouselItem>
-            ))}
-          </CarouselContent>
-        </Carousel>
+            );
+          })}
+        </CarouselContent>
+      </Carousel>
     </section>
   );
 };
